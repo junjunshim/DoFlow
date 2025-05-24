@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DoFlow - Todo 리스트</title>
+</head>
+<body>
+    <h1>📝 Todo 리스트</h1>
+    
+    <!-- 진행률 바 -->
+    <div id="progress-container" style="margin: 1em 0;">
+        <div style="background-color: #eee; height: 20px; width: 100%; position: relative;">
+            <div id="progress-bar" style="background-color: #4caf50; height: 100%; width: 0%; position: absolute; left: 0;"></div>
+            <div id="late-bar" style="background-color: red; height: 100%; width: 0%; position: absolute; right: 0;"></div>
+        </div>
+        <div id="progress-text">진행률: 0%</div>
+    </div>
+
+    <!-- 검색 바 -->
+    <div style="margin: 0.5em 0;">
+        <label>
+            검색: <input type="text" id="searchInput" placeholder="제목으로 검색..." />
+        </label>
+        <label>
+            <input type="checkbox" id="hideCompletedCheckbox" />완료된 항목 숨기기
+        </label>
+    </div>
+
+    <!-- ✅ 추가 폼 -->
+    <form id="todo-form">
+        <input type="text" id="todo-input" placeholder="할 일 제목" required />
+        <input type="date" id="todo-due" placeholder="마감 일" />
+        <input type="text" id="todo-category" placeholder="카테고리 (예: 개인, 업무)" />
+        <textarea id="todo-description" placeholder="상세 설명 (선택)" rows="3" style="width: 100%; margin-top: 0.5em;"></textarea>
+        <button type="submit">추가</button>
+        <button id="resetButton" style="margin: 1em 0; background-color: crimson; color: white;">초기화</button>
+    </form>
+    
+    <!-- 카테고리 드롭다운 -->
+    <label>
+        카테고리:
+        <select id="categoryFilter">
+            <option value="all">전체</option>
+        </select>
+    </label>
+
+    <!-- 전체 리스트 -->
+    <ul id="todo-list"></ul>
+
+    <script>
+        //리스트 로드 함수
+        async function loadTodos() {
+            const res = await fetch('/todos');
+            const todos = await res.json();
+
+            //전체 카테고리 수집, 드롭다운 갱신
+            const categorySet = new Set();
+            todos.forEach(todo => {
+                if (todo.category) categorySet.add(todo.category);
+            });
+
+            const categoryFilter = document.getElementById("categoryFilter");
+            const currentCategory = categoryFilter.value;
+            categoryFilter.innerHTML = `<option value="all">전체</option>`;
+            [...categorySet].forEach(category => {
+                const option = document.createElement("option");
+                option.value = category;
+                option.textContent = category;
+                if (category === currentCategory) option.selected = true;
+                categoryFilter.appendChild(option);
+            });
+
+            //전체 목록 가져오기
+            const list = document.getElementById('todo-list');
+            //전체 목록 => 내부 내용 초기화
+            list.innerHTML = '';
+            
+            //완료 항목 숨기기 옵션
+            const hideCompleted = document.getElementById("hideCompletedCheckbox").checked;
+            //검색창 입력 내용
+            const searchKeyword = document.getElementById("searchInput").value.toLowerCase();
+            //카테고리 옵션
+            const selectedCategory = categoryFilter.value;
+
+            //리스트 정렬
+            todos.sort((a,b,) => {
+                //마감일 가져오기
+                const aDue = a.due ? new Date(a.due) : null;
+                const bDue = b.due ? new Date(b.due) : null;
+
+                //1. 리스트 간 완료상태가 다르면 미완료상태로 비교
+                if(a.completed !== b.completed) return a.completed - b.completed;
+                //2. 마감일 기준으로 정렬
+                if(aDue && bDue) return aDue - bDue;
+                //3. 둘 중 마감일이 설정된 리스트 앞으로 정렬
+                if(aDue) return -1;
+                if(bDue) return 1;
+                return 0;
+            });
+
+            todos.forEach(todo => {
+                //완료 항목 숨김 확인
+                if(hideCompleted && todo.completed){
+                    return;
+                }
+
+                //검색창 입력 확인
+                if(!(searchKeyword === "")){
+                    //검색창 입력된 내용이 포함된 리스트만 출력
+                    if(!todo.title.toLowerCase().includes(searchKeyword)){
+                        return;
+                    }
+                }
+
+                //카테고리 옵션 비교
+                if(!(selectedCategory === "all" || todo.category === selectedCategory)){
+                    return;
+                }
+
+                //항목 생성
+                const li = document.createElement('li');
+
+                /*------ 아래는 항목에 들어갈 요소들------*/
+                //체크박스
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = todo.completed;
+                checkbox.onchange = async () => {
+                    await fetch(`/todos/${todo.id}`, {method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({completed: checkbox.checked})});
+                    await loadTodos();
+                };
+                li.appendChild(checkbox);
+
+                //항목 이름
+                const span = document.createElement('span');
+                span.textContent = `${todo.id}. ${todo.title} `;
+                if(todo.completed){
+                    span.style.textDecoration = 'line-through';
+                    span.style.color = 'gray';
+                }
+                li.appendChild(span);
+
+                //카테고리
+                if (todo.category) {
+                    const categorySpan = document.createElement('span');
+                    categorySpan.textContent = `[${todo.category}]`;
+                    categorySpan.style.marginLeft = '0.5em';
+                    categorySpan.style.fontSize = '0.9em';
+                    categorySpan.style.color = 'gray';
+                    li.appendChild(categorySpan);
+                }
+
+                //상세설명
+                if (todo.description) {
+                    const desc = document.createElement('div');
+                    desc.textContent = todo.description;
+                    desc.style.fontSize = '0.85em';
+                    desc.style.marginTop = '0.25em';
+                    desc.style.color = 'dimgray';
+                    li.appendChild(desc);
+                }
+
+                //마감일
+                const dueDate = todo.due ? new Date(todo.due) : null;
+                if(dueDate){
+                    const dueSpan = document.createElement('span');
+                    dueSpan.textContent = ` (마감: ${todo.due}) `;
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+
+                    if(dueDate < today && !todo.completed){
+                        dueSpan.style.color = 'red';
+                        dueSpan.style.fontWeight = 'bold';
+                    }
+                    li.appendChild(dueSpan);
+                }
+                
+                //수정 버튼
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '수정';
+                editBtn.onclick = () =>{
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = todo.title;
+
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = '저장';
+                    saveBtn.onclick = async () => {
+                        const newTitle = input.value.trim();
+                        if(newTitle === ""){
+                            alert("제목을 비워둘 수 없습니다.");
+                            return;
+                        }
+                        await fetch(`/todos/${todo.id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: input.value })});
+                        await loadTodos();
+                    };
+                    li.innerHTML = '';
+                    li.appendChild(input);
+                    li.appendChild(saveBtn);
+                };
+                li.appendChild(editBtn);
+
+                //삭제 버튼
+                const deletBtn = document.createElement('button');
+                deletBtn.textContent = '삭제';
+                deletBtn.onclick = async () => {
+                    await fetch(`/todos/${todo.id}`, {method: 'DELETE'});
+                    await loadTodos(); // 목록 다시 로딩
+                };
+                li.appendChild(deletBtn);
+                
+                list.appendChild(li);
+            });
+
+            const now = new Date();
+            now.setHours(0, 0, 0, 0); // 날짜만 비교
+
+            //지연 항목 계산
+            const overdue = todos.filter(todo => {
+                if (!todo.due || todo.completed) return false;
+                const dueDate = new Date(todo.due);
+                return dueDate < now;
+            }).length;
+
+            //진행률 계산
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+            const percentDone = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const percentLate = total > 0 ? Math.round((overdue / total) * 100) : 0;
+
+            document.getElementById("progress-bar").style.width = `${percentDone}%`;
+            document.getElementById("late-bar").style.width = `${percentLate}%`;
+            document.getElementById("progress-text").textContent = `진행률: ${percentDone}%, 지연: ${percentLate}%`;
+        }
+
+        //submit 이벤트 핸들러 함수
+        document.getElementById('todo-form').addEventListener('submit', async (e) => {
+            e.preventDefault(); // 기본 제출 방지
+
+            //업로드할 리스트 내용
+            const input = document.getElementById('todo-input');
+            const dueInput = document.getElementById('todo-due');
+            const categoryInput = document.getElementById('todo-category');
+            const descInput = document.getElementById('todo-description');
+
+            //전송용 변수 설정
+            const title = input.value.trim();
+            if (!title) return;
+            const due = dueInput.value;
+            // if (!due) return;
+            const category = categoryInput.value.trim();
+            const description = descInput.value.trim();
+
+            // ✅ POST 요청 보내기
+            await fetch('/todos', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    title: title,
+                    due: due || null,
+                    category: category || null,
+                    description: description || null
+                })});
+
+            input.value = ''; // 입력창 초기화
+            dueInput.value = ''; // 마감일 초기화
+            descInput.value = ''; // 상세 설명 초기화
+            await loadTodos(); // 목록 다시 로드
+        });
+
+        // 최초 로딩
+        loadTodos();
+        //hideCompletedCheckbox 체크 시 리스트 로드
+        document.getElementById("hideCompletedCheckbox").addEventListener("change", loadTodos);
+        //searchInput 검색창 입력 시 로드
+        document.getElementById("searchInput").addEventListener("input", loadTodos);
+        //categoryFilter 선택 시 리스트 로드
+        document.getElementById("categoryFilter").addEventListener("change", loadTodos);
+
+        //resetButton 클릭 시 이벤트 처리
+        document.getElementById("resetButton").addEventListener("click", async () => {
+            if (!confirm("정말 모든 할 일을 삭제하시겠습니까?")) return;
+
+            await fetch("/todos/reset", {
+                method: "DELETE"
+            });
+
+            await loadTodos();
+        });
+    </script>
+</body>
+</html>

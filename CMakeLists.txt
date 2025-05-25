@@ -6,6 +6,7 @@ include(CheckIncludeFileCXX)
 check_include_file_cxx(any HAS_ANY)
 check_include_file_cxx(string_view HAS_STRING_VIEW)
 check_include_file_cxx(coroutine HAS_COROUTINE)
+
 if (NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
     # Do nothing
 elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
@@ -19,7 +20,12 @@ endif ()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(${PROJECT_NAME} main.cc)
+# 주 실행 파일
+add_executable(${PROJECT_NAME}
+    main.cc
+    controllers/TodoController.cc
+    controllers/TodoRepository.cc
+)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
@@ -28,8 +34,10 @@ add_executable(${PROJECT_NAME} main.cc)
 # target_link_libraries(${PROJECT_NAME} PRIVATE drogon)
 #
 # and comment out the following lines
+
+# Drogan 및 SQLite 라이브러리 링크
 find_package(Drogon CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
+target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon sqlite3)
 
 # ##############################################################################
 

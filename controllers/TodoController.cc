@@ -1,7 +1,11 @@
 #include "TodoController.h"
 #include "TodoStorage.h"
+#include "TodoRepository.h"
 #include <json/json.h>
 #include <vector>
+
+//데이터 불러오기 옵션(기본 splite)
+//#define JSON
 
 static std::vector<Todo> todos;
 int nextId = 1;
@@ -9,16 +13,25 @@ int nextId = 1;
 // ✅ 서버 시작 시 자동 로딩
 struct TodoInitializer {
     TodoInitializer() {
-        if (TodoStorage::loadFromFile(todos, nextId)) {
-            std::cout << "[INFO] 할 일 목록이 todos.json에서 복원되었습니다. 총 " << todos.size() << "개\n";
-        } else {
-            std::cout << "[INFO] todos.json이 없거나 비어 있습니다. 새 목록으로 시작합니다.\n";
-        }
+        //데이터 불러오기 옵션에 맞게 작동 JSON or SPLite
+        #ifdef JSON
+            if (TodoStorage::loadFromFile(todos, nextId)) {
+                std::cout << "[INFO] 할 일 목록이 todos.json에서 복원되었습니다. 총 " << todos.size() << "개\n";
+            } else {
+                std::cout << "[INFO] todos.json이 없거나 비어 있습니다. 새 목록으로 시작합니다.\n";
+            }
+        #else
+            TodoRepository::initDB();
+            todos = TodoRepository::getAll();
+            std::cout << "[INFO] DB에서 불러온 할 일 수: " << todos.size() << "\n";
+        #endif
     }
 };
 
 // ✅ 전역 인스턴스 → 프로그램 시작 시 생성됨
 static TodoInitializer _todoLoader;
+
+
 
 void TodoController::getTodos(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback) {
     Json::Value arr(Json::arrayValue);

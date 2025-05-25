@@ -58,13 +58,15 @@ void TodoController::createTodo(const HttpRequestPtr &req, std::function<void(co
     }
 
     Todo todo;
-    todo.id = nextId++;
+    todo.id = nextId++; //Json 방식
     todo.title = (*json)["title"].asString();
     todo.completed = false;
     todo.due = json->isMember("due") ? (*json)["due"].asString() : "";
     todo.category = json->isMember("category") ? (*json)["category"].asString() : "";
     todo.description = json->isMember("description") ? (*json)["description"].asString() : "";
     todos.push_back(todo);
+
+    #ifdef JSON
 
     TodoStorage::saveToFile(todos, nextId);
 
@@ -74,6 +76,25 @@ void TodoController::createTodo(const HttpRequestPtr &req, std::function<void(co
     result["completed"] = todo.completed;
     result["due"] = todo.due;
     callback(HttpResponse::newHttpJsonResponse(result));
+
+    #else
+
+    int newId = TodoRepository::add(todo);
+    if (newId <= 0) {
+        auto err = HttpResponse::newHttpResponse();
+        err->setStatusCode(k500InternalServerError);
+        err->setContentTypeCode(CT_TEXT_PLAIN);
+        err->setBody("Failed to insert todo into database.");
+        callback(err);
+        return;
+    }
+    
+    Json::Value result;
+    result["id"] = newId;
+    auto resp = HttpResponse::newHttpJsonResponse(result);
+    callback(resp);
+
+    #endif
 }
 
 void TodoController::updateTodo(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, int id) {

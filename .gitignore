@@ -563,4 +563,5 @@ FodyWeavers.xsd
 build/
 *.o
 todos.json
+todos.db
 *.swp

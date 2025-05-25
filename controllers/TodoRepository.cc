@@ -61,3 +61,42 @@ std::vector<Todo> TodoRepository::getAll() {
     sqlite3_close(db);
     return result;
 }
+
+int TodoRepository::add(const Todo &todo) {
+    sqlite3 *db;
+    if (sqlite3_open(DB_PATH, &db) != SQLITE_OK) {
+        std::cerr << "DB 열기 실패\n";
+        return -1;
+    }
+
+    const char *sql =
+        "INSERT INTO todos (title, completed, due, category, description) "
+        "VALUES (?, ?, ?, ?, ?);";
+
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        std::cerr << "INSERT 준비 실패\n";
+        sqlite3_close(db);
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, todo.title.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 2, todo.completed ? 1 : 0);
+    sqlite3_bind_text(stmt, 3, todo.due.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, todo.category.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 5, todo.description.c_str(), -1, SQLITE_STATIC);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        std::cerr << "INSERT 실패\n";
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return -1;
+    }
+
+    int insertedId = static_cast<int>(sqlite3_last_insert_rowid(db));
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return insertedId;
+}
+

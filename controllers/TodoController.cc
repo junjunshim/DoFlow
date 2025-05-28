@@ -25,14 +25,14 @@ struct TodoInitializer {
             todos = TodoRepository::getAll();
             std::cout << "[INFO] DB에서 불러온 할 일 수: " << todos.size() << "\n";
         #endif
-    }
+    }   
 };
 
 // ✅ 전역 인스턴스 → 프로그램 시작 시 생성됨
 static TodoInitializer _todoLoader;
 
 
-
+//getTodos함수는 json방식과 splite 방식 모두 동일하게 작동
 void TodoController::getTodos(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback) {
     Json::Value arr(Json::arrayValue);
     for (const auto &todo : todos) {

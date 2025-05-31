@@ -116,7 +116,7 @@ void TodoController::updateTodo(const HttpRequestPtr &req, std::function<void(co
     }
     
 
-
+    #ifdef JSON
     for (auto &todo : todos) {
         if (todo.id == id) {
             if (json->isMember("title") && (*json)["title"].isString()){
@@ -144,6 +144,32 @@ void TodoController::updateTodo(const HttpRequestPtr &req, std::function<void(co
     resp->setStatusCode(k404NotFound);
     resp->setBody("Todo not found");
     callback(resp);
+
+    #else
+    
+    Todo todo;
+    todo.id = id;
+    todo.title = (*json)["title"].asString();
+    todo.completed = json->isMember("completed") ? (*json)["completed"].asBool() : false;
+    todo.due = json->isMember("due") ? (*json)["due"].asString() : "";
+    todo.category = json->isMember("category") ? (*json)["category"].asString() : "";
+    todo.description = json->isMember("description") ? (*json)["description"].asString() : "";
+
+    if (!TodoRepository::update(todo)) {
+        auto resp = HttpResponse::newHttpResponse();
+        resp->setStatusCode(k404NotFound);
+        resp->setBody("Todo not found or update failed.");
+        callback(resp);
+        return;
+    }
+
+    auto resp = HttpResponse::newHttpResponse();
+    resp->setStatusCode(k200OK);
+    resp->setContentTypeCode(CT_TEXT_PLAIN);
+    resp->setBody("Updated");
+    callback(resp);
+
+    #endif
 }
 
 void TodoController::deleteTodo(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, int id) {

@@ -100,3 +100,33 @@ int TodoRepository::add(const Todo &todo) {
     return insertedId;
 }
 
+bool TodoRepository::update(const Todo &todo) {
+    sqlite3 *db;
+    if (sqlite3_open(DB_PATH, &db) != SQLITE_OK) {
+        std::cerr << "DB 열기 실패\n";
+        return false;
+    }
+
+    const char *sql =
+        "UPDATE todos SET title = ?, completed = ?, due = ?, category = ?, description = ? WHERE id = ?;";
+
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        std::cerr << "UPDATE 준비 실패\n";
+        sqlite3_close(db);
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, todo.title.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 2, todo.completed ? 1 : 0);
+    sqlite3_bind_text(stmt, 3, todo.due.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, todo.category.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 5, todo.description.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 6, todo.id);
+
+    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return success;
+}

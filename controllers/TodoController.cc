@@ -173,6 +173,7 @@ void TodoController::updateTodo(const HttpRequestPtr &req, std::function<void(co
 }
 
 void TodoController::deleteTodo(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, int id) {
+    #ifdef JSON
     for (auto it = todos.begin(); it != todos.end(); ++it) {
         if (it->id == id) {
             todos.erase(it);
@@ -189,6 +190,25 @@ void TodoController::deleteTodo(const HttpRequestPtr &req, std::function<void(co
     resp->setStatusCode(k404NotFound);
     resp->setBody("Todo not found");
     callback(resp);
+
+    #else
+
+    if (!TodoRepository::remove(id)) {
+        auto resp = HttpResponse::newHttpResponse();
+        resp->setStatusCode(k404NotFound);
+        resp->setContentTypeCode(CT_TEXT_PLAIN);
+        resp->setBody("Todo not found");
+        callback(resp);
+        return;
+    }
+
+    auto resp = HttpResponse::newHttpResponse();
+    resp->setStatusCode(k200OK);
+    resp->setContentTypeCode(CT_TEXT_PLAIN);
+    resp->setBody("Deleted");
+    callback(resp);
+    
+    #endif
 }
 
 void TodoController::resetTodos(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback)

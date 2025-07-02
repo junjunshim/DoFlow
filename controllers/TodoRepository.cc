@@ -130,3 +130,27 @@ bool TodoRepository::update(const Todo &todo) {
     sqlite3_close(db);
     return success;
 }
+
+bool TodoRepository::remove(int id) {
+    sqlite3 *db;
+    if (sqlite3_open(DB_PATH, &db) != SQLITE_OK) {
+        std::cerr << "DB 열기 실패\n";
+        return false;
+    }
+
+    const char *sql = "DELETE FROM todos WHERE id = ?;";
+    sqlite3_stmt *stmt;
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        std::cerr << "DELETE 준비 실패\n";
+        sqlite3_close(db);
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return success;
+}

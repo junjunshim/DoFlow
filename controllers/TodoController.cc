@@ -155,6 +155,7 @@ void TodoController::updateTodo(const HttpRequestPtr &req, std::function<void(co
     todo.category = json->isMember("category") ? (*json)["category"].asString() : "";
     todo.description = json->isMember("description") ? (*json)["description"].asString() : "";
 
+
     if (!TodoRepository::update(todo)) {
         auto resp = HttpResponse::newHttpResponse();
         resp->setStatusCode(k404NotFound);
@@ -162,6 +163,8 @@ void TodoController::updateTodo(const HttpRequestPtr &req, std::function<void(co
         callback(resp);
         return;
     }
+
+    todos = TodoRepository::getAll();
 
     auto resp = HttpResponse::newHttpResponse();
     resp->setStatusCode(k200OK);
@@ -201,23 +204,35 @@ void TodoController::deleteTodo(const HttpRequestPtr &req, std::function<void(co
         callback(resp);
         return;
     }
+    
+    todos = TodoRepository::getAll();
 
     auto resp = HttpResponse::newHttpResponse();
     resp->setStatusCode(k200OK);
     resp->setContentTypeCode(CT_TEXT_PLAIN);
     resp->setBody("Deleted");
     callback(resp);
-    
+
     #endif
 }
 
 void TodoController::resetTodos(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback)
 {
+    #ifdef JSON
+    
     todos.clear();
     nextId = 1;
 
     TodoStorage::saveToFile(todos, nextId);
+    
+    #else
 
+    TodoRepository::clearAll();
+
+    todos = TodoRepository::getAll();
+    
+    #endif
+    
     auto resp = HttpResponse::newHttpResponse();
     resp->setStatusCode(k200OK);
     resp->setContentTypeCode(CT_TEXT_PLAIN);

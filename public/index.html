@@ -127,7 +127,7 @@
                 checkbox.type = 'checkbox';
                 checkbox.checked = todo.completed;
                 checkbox.onchange = async () => {
-                    await fetch(`/todos/${todo.id}`, {method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({completed: checkbox.checked})});
+                    await fetch(`/todos/${todo.id}`, {method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: todo.title, completed: checkbox.checked, due: todo.due, category: todo.category, description: todo.description})});
                     await loadTodos();
                 };
                 li.appendChild(checkbox);
@@ -192,7 +192,7 @@
                             alert("제목을 비워둘 수 없습니다.");
                             return;
                         }
-                        await fetch(`/todos/${todo.id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: input.value })});
+                        await fetch(`/todos/${todo.id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: input.value, completed: todo.completed, due: todo.due, category: todo.category, description: todo.description })});
                         await loadTodos();
                     };
                     li.innerHTML = '';
@@ -206,6 +206,7 @@
                 deletBtn.textContent = '삭제';
                 deletBtn.onclick = async () => {
                     await fetch(`/todos/${todo.id}`, {method: 'DELETE'});
+                    alert("삭제되었습니다!");
                     await loadTodos(); // 목록 다시 로딩
                 };
                 li.appendChild(deletBtn);
@@ -285,7 +286,7 @@
             await fetch("/todos/reset", {
                 method: "DELETE"
             });
-
+            alert("전체 초기화 완료!");
             await loadTodos();
         });
     </script>

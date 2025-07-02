@@ -9,4 +9,5 @@ public:
     static int add(const Todo &todo);             // 리스트 추가 & 성공 시 ID 반환
     static bool update(const Todo &todo);         // 리스트 수정
     static bool remove(int id);                   // 리스트 삭제
+    static void clearAll();                       // 리스트 초기화 (사용 시 주의)
 };

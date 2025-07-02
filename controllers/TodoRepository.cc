@@ -154,3 +154,21 @@ bool TodoRepository::remove(int id) {
     sqlite3_close(db);
     return success;
 }
+
+void TodoRepository::clearAll() {
+    sqlite3 *db;
+    if (sqlite3_open(DB_PATH, &db) != SQLITE_OK) {
+        std::cerr << "DB 열기 실패\n";
+        return;
+    }
+
+    const char *sql = "DELETE FROM todos;";
+    char *errMsg = nullptr;
+
+    if (sqlite3_exec(db, sql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        std::cerr << "모든 항목 삭제 실패: " << errMsg << "\n";
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+}
